@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Budget Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#7c3aed" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Budget" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -456,6 +463,45 @@
 
     // Initial render
     render();
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/expense-tracker/sw.js');
+      });
+    }
+
+    // Generate app icons on first load and cache as data URLs
+    (function generateIcons() {
+      [192, 512].forEach(size => {
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        const ctx = c.getContext('2d');
+        const r = size * 0.18;
+        // Background
+        ctx.fillStyle = '#0a0a0f';
+        ctx.beginPath();
+        ctx.roundRect(0, 0, size, size, r);
+        ctx.fill();
+        // Violet circle
+        ctx.fillStyle = '#7c3aed';
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+        // Dollar sign
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${size * 0.42}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('$', size / 2, size / 2 + size * 0.02);
+        // Save to a link so manifest can reference it
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.sizes = `${size}x${size}`;
+        link.href = c.toDataURL('image/png');
+        document.head.appendChild(link);
+      });
+    })();
   </script>
 </body>
 </html>
