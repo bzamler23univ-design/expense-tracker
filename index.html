@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Budget Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            gray: {
+              950: '#0a0a0f',
+            }
+          },
+          keyframes: {
+            slideIn: {
+              '0%': { opacity: '0', transform: 'translateX(24px)' },
+              '100%': { opacity: '1', transform: 'translateX(0)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            pulse2: {
+              '0%, 100%': { opacity: '1' },
+              '50%': { opacity: '0.4' },
+            }
+          },
+          animation: {
+            slideIn: 'slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            fadeIn: 'fadeIn 0.3s ease-out',
+            pulse2: 'pulse2 1.4s ease-in-out infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0a0a0f; }
+    .glass {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+    }
+    .bar-fill { transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .btn-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-shine::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.5s ease;
+    }
+    .btn-shine:hover::after { left: 150%; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+  </style>
+</head>
+<body class="font-sans text-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="border-b border-white/5 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-white tracking-tight">Budget Tracker</span>
+      </div>
+      <div class="flex items-center gap-2 text-sm text-gray-400">
+        <span>Total Spent:</span>
+        <span id="header-total" class="font-semibold text-white">$0.00</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- Dashboard Cards -->
+    <section id="dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Total Spent hero -->
+      <div class="glass rounded-2xl p-5 lg:col-span-1 flex flex-col gap-1">
+        <p class="text-xs text-gray-500 uppercase tracking-widest font-medium">Total Spent</p>
+        <p id="total-spent" class="text-3xl font-bold text-white mt-1">$0.00</p>
+        <p id="expense-count" class="text-xs text-gray-500 mt-1">0 expenses</p>
+      </div>
+      <!-- Category cards injected here -->
+      <div id="category-cards" class="contents"></div>
+    </section>
+
+    <!-- Two-column layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- Add Expense Form -->
+      <div class="lg:col-span-2">
+        <div class="glass rounded-2xl p-6 space-y-5">
+          <h2 class="font-semibold text-white text-sm uppercase tracking-widest text-gray-400">Add Expense</h2>
+
+          <form id="expense-form" class="space-y-4" novalidate>
+
+            <!-- Amount -->
+            <div class="space-y-1.5">
+              <label class="text-xs text-gray-400 font-medium">Amount</label>
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input
+                  id="amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl pl-7 pr-4 py-3 text-sm text-white placeholder-gray-600
+                         focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                />
+              </div>
+            </div>
+
+            <!-- Category -->
+            <div class="space-y-1.5">
+              <label class="text-xs text-gray-400 font-medium">Category</label>
+              <select
+                id="category"
+                class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white
+                       focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="" disabled selected>Select category</option>
+                <option value="Food">🍔 Food</option>
+                <option value="Transport">🚗 Transport</option>
+                <option value="Shopping">🛍️ Shopping</option>
+                <option value="Health">💊 Health</option>
+                <option value="Entertainment">🎬 Entertainment</option>
+                <option value="Bills">💡 Bills</option>
+                <option value="Travel">✈️ Travel</option>
+                <option value="Other">📦 Other</option>
+              </select>
+            </div>
+
+            <!-- Description -->
+            <div class="space-y-1.5">
+              <label class="text-xs text-gray-400 font-medium">Description</label>
+              <input
+                id="description"
+                type="text"
+                placeholder="What was it for?"
+                maxlength="80"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600
+                       focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 transition-all"
+              />
+            </div>
+
+            <!-- Error -->
+            <p id="form-error" class="text-xs text-red-400 hidden"></p>
+
+            <!-- Submit -->
+            <button
+              type="submit"
+              id="submit-btn"
+              class="btn-shine w-full bg-violet-600 hover:bg-violet-500 text-white font-medium text-sm
+                     rounded-xl py-3 transition-all duration-200 active:scale-95"
+            >
+              Add Expense
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Expense List -->
+      <div class="lg:col-span-3 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-gray-400">Recent Expenses</h2>
+          <button
+            id="clear-btn"
+            onclick="clearAll()"
+            class="text-xs text-gray-600 hover:text-red-400 transition-colors hidden"
+          >Clear all</button>
+        </div>
+
+        <div id="expense-list" class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+          <!-- Empty state -->
+          <div id="empty-state" class="glass rounded-2xl p-10 flex flex-col items-center gap-3 text-center">
+            <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+            </div>
+            <p class="text-sm text-gray-500">No expenses yet.<br/>Add one to get started.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Category Breakdown Bar Chart -->
+    <section id="breakdown-section" class="glass rounded-2xl p-6 hidden">
+      <h2 class="font-semibold text-sm uppercase tracking-widest text-gray-400 mb-5">Spending Breakdown</h2>
+      <div id="breakdown-bars" class="space-y-3"></div>
+    </section>
+
+  </main>
+
+  <script>
+    // ── Category config ──────────────────────────────────────────────
+    const CAT_CONFIG = {
+      Food:          { emoji: '🍔', color: 'bg-orange-500',  text: 'text-orange-400'  },
+      Transport:     { emoji: '🚗', color: 'bg-blue-500',    text: 'text-blue-400'    },
+      Shopping:      { emoji: '🛍️', color: 'bg-pink-500',    text: 'text-pink-400'    },
+      Health:        { emoji: '💊', color: 'bg-green-500',   text: 'text-green-400'   },
+      Entertainment: { emoji: '🎬', color: 'bg-yellow-500',  text: 'text-yellow-400'  },
+      Bills:         { emoji: '💡', color: 'bg-cyan-500',    text: 'text-cyan-400'    },
+      Travel:        { emoji: '✈️', color: 'bg-violet-500',  text: 'text-violet-400'  },
+      Other:         { emoji: '📦', color: 'bg-gray-500',    text: 'text-gray-400'    },
+    };
+
+    // ── State ────────────────────────────────────────────────────────
+    let expenses = JSON.parse(localStorage.getItem('bt_expenses') || '[]');
+
+    function save() {
+      localStorage.setItem('bt_expenses', JSON.stringify(expenses));
+    }
+
+    // ── Form submit ──────────────────────────────────────────────────
+    document.getElementById('expense-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const amountRaw = document.getElementById('amount').value;
+      const category  = document.getElementById('category').value;
+      const desc      = document.getElementById('description').value.trim();
+      const errEl     = document.getElementById('form-error');
+
+      errEl.classList.add('hidden');
+
+      if (!amountRaw || parseFloat(amountRaw) <= 0) {
+        showError('Please enter a valid amount.'); return;
+      }
+      if (!category) {
+        showError('Please select a category.'); return;
+      }
+      if (!desc) {
+        showError('Please add a description.'); return;
+      }
+
+      const expense = {
+        id: Date.now(),
+        amount: parseFloat(parseFloat(amountRaw).toFixed(2)),
+        category,
+        description: desc,
+        date: new Date().toISOString(),
+      };
+
+      expenses.unshift(expense);
+      save();
+      render();
+
+      // Reset
+      document.getElementById('amount').value = '';
+      document.getElementById('category').value = '';
+      document.getElementById('description').value = '';
+
+      // Flash button
+      const btn = document.getElementById('submit-btn');
+      btn.textContent = '✓ Added';
+      btn.classList.add('bg-green-600');
+      btn.classList.remove('bg-violet-600', 'hover:bg-violet-500');
+      setTimeout(() => {
+        btn.textContent = 'Add Expense';
+        btn.classList.remove('bg-green-600');
+        btn.classList.add('bg-violet-600', 'hover:bg-violet-500');
+      }, 1200);
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('form-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────
+    function deleteExpense(id) {
+      expenses = expenses.filter(e => e.id !== id);
+      save();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm('Delete all expenses?')) return;
+      expenses = [];
+      save();
+      render();
+    }
+
+    // ── Render ───────────────────────────────────────────────────────
+    function fmt(n) {
+      return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function timeAgo(iso) {
+      const diff = (Date.now() - new Date(iso)) / 1000;
+      if (diff < 60)   return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function render() {
+      renderList();
+      renderDashboard();
+      renderBreakdown();
+    }
+
+    function renderList() {
+      const list = document.getElementById('expense-list');
+      const empty = document.getElementById('empty-state');
+      const clearBtn = document.getElementById('clear-btn');
+
+      // Remove existing expense items (keep empty state node)
+      list.querySelectorAll('.expense-item').forEach(el => el.remove());
+
+      if (expenses.length === 0) {
+        empty.classList.remove('hidden');
+        clearBtn.classList.add('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      clearBtn.classList.remove('hidden');
+
+      expenses.forEach((exp, i) => {
+        const cfg = CAT_CONFIG[exp.category] || CAT_CONFIG.Other;
+        const div = document.createElement('div');
+        div.className = 'expense-item glass rounded-xl px-4 py-3.5 flex items-center gap-3 group animate-slideIn';
+        div.style.animationDelay = i === 0 ? '0ms' : '0ms';
+        div.innerHTML = `
+          <div class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-base flex-shrink-0">
+            ${cfg.emoji}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-white truncate">${escHtml(exp.description)}</p>
+            <p class="text-xs text-gray-500 mt-0.5">
+              <span class="${cfg.text} font-medium">${exp.category}</span>
+              <span class="mx-1">·</span>
+              ${timeAgo(exp.date)}
+            </p>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <span class="text-sm font-semibold text-white">${fmt(exp.amount)}</span>
+            <button
+              onclick="deleteExpense(${exp.id})"
+              class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-600 hover:text-red-400 p-1 rounded"
+              title="Delete"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function renderDashboard() {
+      const total = expenses.reduce((s, e) => s + e.amount, 0);
+      document.getElementById('total-spent').textContent = fmt(total);
+      document.getElementById('header-total').textContent = fmt(total);
+      document.getElementById('expense-count').textContent =
+        expenses.length + ' expense' + (expenses.length !== 1 ? 's' : '');
+
+      // Category summary cards (top 3 by spend)
+      const bycat = {};
+      expenses.forEach(e => { bycat[e.category] = (bycat[e.category] || 0) + e.amount; });
+      const sorted = Object.entries(bycat).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+      const container = document.getElementById('category-cards');
+      container.innerHTML = '';
+      sorted.forEach(([cat, amt]) => {
+        const cfg = CAT_CONFIG[cat] || CAT_CONFIG.Other;
+        const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+        const div = document.createElement('div');
+        div.className = 'glass rounded-2xl p-5 flex flex-col gap-1 animate-fadeIn';
+        div.innerHTML = `
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-gray-500 uppercase tracking-widest font-medium">${cat}</p>
+            <span class="text-base">${cfg.emoji}</span>
+          </div>
+          <p class="text-2xl font-bold text-white mt-1">${fmt(amt)}</p>
+          <p class="text-xs text-gray-500">${pct}% of total</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderBreakdown() {
+      const section = document.getElementById('breakdown-section');
+      const bars = document.getElementById('breakdown-bars');
+
+      if (expenses.length === 0) { section.classList.add('hidden'); return; }
+      section.classList.remove('hidden');
+
+      const total = expenses.reduce((s, e) => s + e.amount, 0);
+      const bycat = {};
+      expenses.forEach(e => { bycat[e.category] = (bycat[e.category] || 0) + e.amount; });
+      const sorted = Object.entries(bycat).sort((a, b) => b[1] - a[1]);
+
+      bars.innerHTML = '';
+      sorted.forEach(([cat, amt]) => {
+        const cfg = CAT_CONFIG[cat] || CAT_CONFIG.Other;
+        const pct = total > 0 ? (amt / total) * 100 : 0;
+        const row = document.createElement('div');
+        row.className = 'space-y-1.5';
+        row.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-300 font-medium">${cfg.emoji} ${cat}</span>
+            <span class="text-gray-400">${fmt(amt)} <span class="text-gray-600 ml-1">${pct.toFixed(1)}%</span></span>
+          </div>
+          <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div class="h-full ${cfg.color} rounded-full bar-fill" style="width: 0%"
+                 data-target="${pct}"></div>
+          </div>
+        `;
+        bars.appendChild(row);
+      });
+
+      // Animate bars after paint
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bars.querySelectorAll('[data-target]').forEach(el => {
+            el.style.width = el.dataset.target + '%';
+          });
+        });
+      });
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
