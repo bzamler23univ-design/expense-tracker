@@ -551,7 +551,7 @@ let taxRow = null;
 // Local prefs
 let selectedMonth = todayYYYYMM();
 
-function lsKey(k) { return 'bt_' + (currentUser?.email||'x') + '_' + k; }
+function lsKey(k) { return 'bt_' + (currentUser?.sub || currentUser?.email||'x') + '_' + k; }
 function savePref(k,v) { try { localStorage.setItem(lsKey(k), JSON.stringify(v)); } catch(e){} }
 function loadPref(k,def) { try { const v=localStorage.getItem(lsKey(k)); return v?JSON.parse(v):def; } catch(e){ return def; } }
 
@@ -687,10 +687,34 @@ async function sheetsRequest(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error('Sheets API error: ' + err);
+    const errText = await res.text();
+    console.error('Sheets API error', res.status, errText);
+    // Token expired — re-request
+    if (res.status === 401) {
+      await reauthorize();
+      // retry once
+      const res2 = await fetch(url, {
+        method,
+        headers: { Authorization:'Bearer '+accessToken, 'Content-Type':'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res2.ok) throw new Error('Sheets API error after reauth: ' + await res2.text());
+      return res2.json();
+    }
+    throw new Error('Sheets API ' + res.status + ': ' + errText);
   }
   return res.json();
+}
+
+function reauthorize() {
+  return new Promise((resolve) => {
+    tokenClient.callback = async (resp) => {
+      if (resp.error) { console.error(resp); return; }
+      accessToken = resp.access_token;
+      resolve();
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
 }
 
 async function driveRequest(method, path, body) {
@@ -1035,7 +1059,7 @@ async function submitNewCategory() {
     renderAll();
   } catch(e) {
     console.error(e); syncState('error');
-    errEl.textContent='Error saving. Try again.'; errEl.classList.remove('hidden');
+    errEl.textContent='Error: '+e.message; errEl.classList.remove('hidden');
   } finally { btn.disabled=false; btn.textContent='Add Category'; }
 }
 
@@ -1430,7 +1454,7 @@ async function submitModal() {
     closeModal();
     renderAll();
   } catch(e) {
-    errEl.textContent='Error saving. Check your connection.';
+    errEl.textContent='Error: '+e.message;
     errEl.classList.remove('hidden');
   } finally {
     btn.disabled=false;
