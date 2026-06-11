@@ -156,8 +156,14 @@
           class="w-8 h-8 glass rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors hidden">
           <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
         </a>
-        <!-- Avatar -->
-        <img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="" title="Sign out" onclick="confirmSignOut()" />
+        <!-- Avatar + dropdown -->
+        <div class="relative">
+          <img id="user-avatar" class="w-8 h-8 rounded-full cursor-pointer" src="" alt="" title="Account" onclick="toggleAccountMenu(event)" />
+          <div id="account-menu" class="hidden absolute right-0 top-10 w-52 glass-md rounded-xl shadow-xl z-50 overflow-hidden">
+            <button onclick="confirmSignOut()" class="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors">Sign out</button>
+            <button onclick="resetAndReconnect()" class="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors border-t border-white/5">Reset &amp; create new sheet</button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -637,6 +643,14 @@ async function afterSignIn() {
   } else {
     showSetup();
   }
+}
+
+function toggleAccountMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('account-menu');
+  m.classList.toggle('hidden');
+  const close = () => { m.classList.add('hidden'); document.removeEventListener('click', close); };
+  if (!m.classList.contains('hidden')) document.addEventListener('click', close);
 }
 
 function confirmSignOut() {
