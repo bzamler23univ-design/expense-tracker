@@ -88,6 +88,9 @@
       Sign in with Google
     </button>
     <p class="text-xs text-gray-600">Your data is stored in your own Google Drive.<br/>No one else can access it.</p>
+    <button onclick="resetAndReconnect()" class="text-xs text-gray-700 hover:text-gray-400 transition-colors underline underline-offset-2">
+      Reset &amp; create a new sheet
+    </button>
   </div>
 </div>
 
@@ -642,6 +645,17 @@ function confirmSignOut() {
   accessToken = null; currentUser = null; spreadsheetId = null;
   expenses=[]; budgets={}; categories=[]; taxData={};
   showSignIn();
+}
+
+function resetAndReconnect() {
+  if (!confirm('This will disconnect your current Google Sheet so you can create a new one. Your sheet in Google Drive will not be deleted. Continue?')) return;
+  // Clear the saved spreadsheet ID for this user
+  try { localStorage.removeItem(lsKey('spreadsheetId')); } catch(e){}
+  // Also clear legacy keys
+  try { localStorage.removeItem('bt_x_spreadsheetId'); } catch(e){}
+  // Force full clear to be safe
+  try { localStorage.clear(); } catch(e){}
+  location.reload();
 }
 
 window.addEventListener('load', () => {
